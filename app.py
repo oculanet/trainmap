@@ -143,15 +143,15 @@ def index():
     ''').fetchall()
 
     conn.close()
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return render_template('index.html', trains=trains, depots=depots, current_time=current_time)
+    now = datetime.now()
+    return render_template('index.html', trains=trains, depots=depots, now=now)
 
 @app.route('/update/<int:train_id>', methods=['GET', 'POST'])
 def update_train(train_id):
     conn = get_db_connection()
     if request.method == 'POST':
         status = request.form['status']
-        track_id = request.form['track'] or None
+        track_id = request.form.get('track') or None
         conn.execute('''
             UPDATE trains 
             SET status = ?, current_track_id = ?, last_updated = CURRENT_TIMESTAMP
@@ -170,11 +170,11 @@ def update_train(train_id):
     ''').fetchall()
     conn.close()
 
-    return render_template('update.html', train=train, tracks=tracks)
+    now = datetime.now()
+    return render_template('update.html', train=train, tracks=tracks, now=now)
 
 @app.route('/depot/<int:depot_id>')
 def depot_map(depot_id):
-    from datetime import datetime
     conn = get_db_connection()
     depot = conn.execute('SELECT * FROM depots WHERE id = ?', (depot_id,)).fetchone()
     tracks = conn.execute('''
@@ -197,7 +197,6 @@ def depot_map(depot_id):
         track_types=track_types,
         now=datetime.now()  # 👈 Pass the datetime object here
     )
-
 
 @app.route('/api/trains')
 def api_trains():
