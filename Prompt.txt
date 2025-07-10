@@ -1,0 +1,73 @@
+Objective:
+Develop a web-based dashboard to monitor Dubai Metro trains in real-time, displaying their locations (mainline/depots), maintenance status, and manual movement logs. The system must integrate SQLite for data storage and support PM/CM scheduling with visual depot layouts.
+
+Core Requirements:
+Train Fleet:
+
+KS Trains (5001–5079) and Alstom Trains (5101–5150).
+
+Statuses: Fit or Unfit (with subtypes: *CM, 14-Day PM, 28-Day PM, 19K PM*).
+
+Depot Structure:
+
+Red Line: Jebel Ali (JDP), Rashidiya (RDP).
+
+Green Line: Al Qusais (QDP).
+
+Track Types per Depot:
+
+Light Maintenance (LMT): JDP-5, RDP-6, QDP-5.
+
+Heavy Maintenance (HMT): 2 tracks each.
+
+Specialty Tracks (QDP only): 1 Wheel Lathe, 1 CC Shoe Cleaning.
+
+Stabling: 10 tracks per depot.
+
+Visualization:
+
+Interactive depot maps showing LMT, HMT, Wheel Lathe, CC Shoe, and Stabling tracks with train numbers displayed.
+
+Color-coded statuses (e.g., red for Unfit, green for Fit).
+
+Database (SQLite):
+
+Tables for trains, depots, maintenance types (CM/PM), and movement logs history, users admin and operator (restirctive for view only)
+
+Support manual updates for train movements.
+
+Features:
+
+Real-time location updates.
+
+Filter trains by status/maintenance type.
+
+Admin override for manual movements.
+
+Deliverables:
+
+Python backend (Flask/Django) with SQLite.
+
+Web dashboard with depot maps and analytics.
+
+Sample dataset for testing.
+
+Optional Enhancements:
+
+Predictive maintenance alerts.
+
+API integration with live metro data.
+
+below HTML page shoul be there but not limited to
+
+index summrize overall status not in so much details
+Depot Dasboard - show all 3 depot in one page showing the status of JDP, QDP RDP, with Track HMT, LMT and special track only
+list of all the trains with filterin GL RL, FIT unfit, alstom ks 
+use login
+train status changes
+depot summry 
+train summry and history movements
+
+
+
+to create db flask initdb
