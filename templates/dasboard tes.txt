@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Dubai Metro Monitoring</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --red-line: #e30613;
+            --green-line: #5ab946;
+            --fit-status: #28a745;
+            --unfit-status: #dc3545;
+            --cm-status: #ffc107;
+            --pm14d-status: #fd7e14;
+            --pm28d-status: #6f42c1;
+            --pm19k-status: #20c997;
+            --ks-train: #0d6efd;
+            --alstom-train: #6610f2;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: white;
+            padding: 15px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .status-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+            margin-bottom: 20px;
+            height: 100%;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+        
+        .depot-container {
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .depot-header {
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .depot-title {
+            font-weight: bold;
+            font-size: 1.4rem;
+            color: #333;
+        }
+        
+        .red-line {
+            color: var(--red-line);
+        }
+        
+        .green-line {
+            color: var(--green-line);
+        }
+        
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+            border-bottom: 3px solid #0d6efd;
+        }
+        
+        .maintenance-badge {
+            font-size: 0.75rem;
+            padding: 5px 8px;
+            margin-left: 5px;
+            border-radius: 4px;
+        }
+        
+        .movement-log {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .highlight {
+            animation: highlight 2s ease;
+        }
+        
+        @keyframes highlight {
+            0% { background-color: rgba(255, 255, 0, 0.5); }
+            100% { background-color: transparent; }
+        }
+        
+        .train-list-item {
+            transition: all 0.3s ease;
+            border-left: 4px solid;
+        }
+        
+        .track-type-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #dee2e6;
+            color: #495057;
+        }
+        
+        .train-number {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        
+        .track-visual {
+            min-height: 120px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: white;
+            position: relative;
+        }
+        
+        .track-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #6c757d;
+        }
+        
+        .train-box {
+            display: inline-block;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            min-width: 70px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .train-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .train-ks {
+            background-color: var(--ks-train);
+        }
+        
+        .train-alstom {
+            background-color: var(--alstom-train);
+        }
+        
+        .status-fit {
+            border-left: 4px solid var(--fit-status);
+        }
+        
+        .status-unfit {
+            border-left: 4px solid var(--unfit-status);
+        }
+        
+        .status-cm {
+            border-left: 4px solid var(--cm-status);
+        }
+        
+        .status-pm14d {
+            border-left: 4px solid var(--pm14d-status);
+        }
+        
+        .status-pm28d {
+            border-left: 4px solid var(--pm28d-status);
+        }
+        
+        .status-pm19k {
+            border-left: 4px solid var(--pm19k-status);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1><i class="fas fa-train"></i> Dubai Metro Train Monitoring</h1>
+                    <p class="mb-0">Real-time tracking and maintenance management</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="d-inline-block me-3">
+                        <span id="current-time" class="fw-bold">{{ datetime.now().strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i> {{ username }} ({{ role }})
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/"><i class="fas fa-home me-1"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#depot-view"><i class="fas fa-map-marked-alt me-1"></i> Depot View</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/trains"><i class="fas fa-list me-1"></i> Train List</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#maintenance"><i class="fas fa-tools me-1"></i> Maintenance</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#movement-logs"><i class="fas fa-history me-1"></i> Movement Logs</a>
+                    </li>
+                </ul>
+                <form class="d-flex">
+                    <div class="input-group">
+                        <input type="text" class="form-control form-control-sm" placeholder="Search train...">
+                        <button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-search"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-4">
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="status-card card bg-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Total Trains</h5>
+                                <h2 class="card-text">{{ total_trains }}</h2>
+                            </div>
+                            <div class="icon-circle bg-primary text-white">
+                                <i class="fas fa-train fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span class="badge bg-secondary">KS: 79</span>
+                            <span class="badge bg-info">Alstom: 50</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card card bg-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Operational</h5>
+                                <h2 class="card-text text-success">{{ operational_trains }}</h2>
+                            </div>
+                            <div class="icon-circle bg-success text-white">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                        <p class="mb-0"><small>Fit for service</small></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card card bg-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Maintenance</h5>
+                                <h2 class="card-text text-warning">{{ maintenance_trains }}</h2>
+                            </div>
+                            <div class="icon-circle bg-warning text-white">
+                                <i class="fas fa-tools fa-2x"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge bg-danger">CM: 8</span>
+                            <span class="badge bg-purple">PM: 23</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card card bg-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">On Mainline</h5>
+                                <h2 class="card-text text-info">{{ mainline_trains }}</h2>
+                            </div>
+                            <div class="icon-circle bg-info text-white">
+                                <i class="fas fa-subway fa-2x"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge bg-danger">Red Line: 52</span>
+                            <span class="badge bg-success">Green Line: 35</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+   <!-- Depot Status Overview -->
+<!-- Depot Status Overview -->
+<div class="row mb-4" id="depot-view">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h4 class="mb-0"><i class="fas fa-map-marked-alt me-2"></i>Depot Status Overview</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for depot in depots %}
+                    <div class="col-md-4 mb-4">
+                        <div class="depot-container">
+                            <div class="depot-header d-flex justify-content-between align-items-center">
+                                <h3 class="depot-title {% if depot.line == 'Red Line' %}red-line{% else %}green-line{% endif %} mb-0">
+                                    {{ depot.info.name }}
+                                </h3>
+                                <span class="badge bg-{% if depot.info.line == 'Red Line' %}danger{% else %}success{% endif %}">
+                                    {{ depot.info.line }}
+                                </span>
+                            </div>
+                            
+                            <!-- Track Sections -->
+                            {% macro render_track_section(title, trains, track_type) %}
+                                {% if trains or track_type != 'specialty' or depot.info.name == 'Al Qusais Depot (QDP)' %}
+                                <div class="track-section mt-3">
+                                    <h5 class="track-type-label">
+                                        {{ title }}
+                                        <small class="text-muted">({{ trains|length }} train{% if trains|length != 1 %}s{% endif %})</small>
+                                    </h5>
+                                    <div class="track-visual p-2">
+                                        {% if trains %}
+                                            {% for train in trains %}
+                                            <div class="train-box 
+                                                {% if train.type == 'KS' %}train-ks{% else %}train-alstom{% endif %}
+                                                {% if train.status == 'Fit' %}status-fit
+                                                {% elif train.maintenance_type == 'CM' %}status-cm
+                                                {% elif train.maintenance_type == '14-Day PM' %}status-pm14d
+                                                {% elif train.maintenance_type == '28-Day PM' %}status-pm28d
+                                                {% elif train.maintenance_type == '19K PM' %}status-pm19k
+                                                {% else %}status-unfit{% endif %}"
+                                                data-bs-toggle="tooltip" 
+                                                title="{{ train.train_number }} - {{ train.status }}
+                                                {% if train.maintenance_type %}({{ train.maintenance_type }}){% endif %}
+                                                Location: {{ train.location }}">
+                                                {{ train.train_number }}
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="text-muted small">No trains present</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endmacro %}
+                            
+                            {{ render_track_section(
+                                'Light Maintenance Tracks', 
+                                depot.tracks.lmt, 
+                                'lmt'
+                            ) }}
+                            
+                            {{ render_track_section(
+                                'Heavy Maintenance Tracks', 
+                                depot.tracks.hmt, 
+                                'hmt'
+                            ) }}
+                            
+
+                            
+                            {{ render_track_section(
+                                'Stabling Tracks', 
+                                depot.tracks.stabling, 
+                                'stabling'
+                            ) }}
+                             {% if depot.info.name == 'Al Qusais Depot (QDP)' %}
+                                {{ render_track_section(
+                                    'Specialty Tracks', 
+                                    depot.tracks.specialty, 
+                                    'specialty'
+                                ) }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+})
+</script>
+        <!-- Analytics and Movement Logs -->
+        <div class="row mb-4" id="movement-logs">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Maintenance Status Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="maintenanceChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Movement Logs</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary">Export</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="movement-log">
+                            {% for movement in movements %}
+                            <div class="log-entry {% if loop.first %}highlight{% endif %}">
+                                <div class="d-flex justify-content-between">
+                                    <strong>Train {{ movement['train_number'] }}</strong>
+                                    <small>{{ movement['movement_time'] }}</small>
+                                </div>
+                                <div>Moved from {{ movement['from_location'] }} to {{ movement['to_location'] }}</div>
+                                <small class="text-muted">Operator: {{ movement['operator'] }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Dubai Metro Train Monitoring System</h5>
+                    <p class="mb-0">Real-time tracking and maintenance management solution</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="mb-0">© 2023 Roads and Transport Authority, Dubai</p>
+                    <p class="mb-0">v2.1.5 | Last updated: {{ datetime.now().strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script>
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = 
+                now.toLocaleString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+        }
+        
+        // Initialize time and update every second
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // Maintenance Chart
+        const ctx = document.getElementById('maintenanceChart').getContext('2d');
+        const maintenanceChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Fit', 'CM', '14-Day PM', '28-Day PM', '19K PM'],
+                datasets: [{
+                    data: [98, 8, 12, 7, 4],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(253, 126, 20, 0.8)',
+                        'rgba(111, 66, 193, 0.8)',
+                        'rgba(32, 201, 151, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(253, 126, 20, 1)',
+                        'rgba(111, 66, 193, 1)',
+                        'rgba(32, 201, 151, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.raw} trains`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Highlight new log entries
+        setTimeout(() => {
+            document.querySelectorAll('.highlight').forEach(el => {
+                el.classList.remove('highlight');
+            });
+        }, 5000);
+    </script>
+</body>
+</html>
