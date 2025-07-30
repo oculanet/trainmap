@@ -767,4 +767,6 @@ def logout():
 if __name__ == '__main__':
     # Create database directory if it doesn't exist
     os.makedirs(os.path.dirname(app.config['DATABASE']), exist_ok=True)
-    app.run(debug=True, port=5000)
+
+    port = int(os.environ.get("PORT", 10000))  # Render assigns this dynamically
+    app.run(host='0.0.0.0', port=port, debug=True)
